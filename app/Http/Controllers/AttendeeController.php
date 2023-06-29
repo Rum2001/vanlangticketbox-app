@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Carbon\Carbon;
 
 class AttendeeController extends Controller
 {
@@ -60,48 +61,48 @@ class AttendeeController extends Controller
             'start_time' => 'required|date',
             'end_time' => 'required|date|after:start_time',
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
                 'message' => "Email của bạn sai định dạng",
             ]);
         }
-    
+
         // Kiểm tra định dạng email
         $emailValidator = Validator::make(['email' => $request->email], [
             'email' => 'email',
         ]);
-    
+
         if ($emailValidator->fails()) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid email format.',
             ]);
         }
-    
+
         // Kiểm tra sự tồn tại của email và event_name trong cơ sở dữ liệu
         $existingAttendee = Attendee::where('email', $request->email)
             ->where('event_name', $request->event_name)
             ->first();
-    
+
         if ($existingAttendee) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Bạn đã đăng ký sự kiện này trước đó',
             ]);
         }
-    
+
         // Tìm event_id tương ứng với event_name
         $event = Event::where('title', $request->event_name)->first();
-    
+
         if (!$event) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Event not found.',
             ]);
         }
-    
+
         // Kiểm tra và cập nhật quantity_ticket trong bảng events
         if ($event->quantity_ticket > 0) {
             $event->quantity_ticket -= 1;
@@ -112,7 +113,7 @@ class AttendeeController extends Controller
                 'message' => 'Sự kiện đã đủ số lượng tham gia',
             ]);
         }
-    
+
         $attendee = new Attendee;
         $attendee->email = $request->email;
         $attendee->event_name = $request->event_name;
@@ -122,9 +123,9 @@ class AttendeeController extends Controller
         $attendee->event_id = $event->id; // Lưu event_id vào bảng attendees
         $attendee->verify_code = $this->generateVerifyCode($request->email, $request->event_name);
         $attendee->save();
-    
+
         $this->sendEmail($attendee->email, $attendee->event_name, $attendee->verify_code);
-    
+
         return response()->json([
             'status' => 'success',
             'message' => 'Đăng ký thành công',
@@ -340,4 +341,32 @@ class AttendeeController extends Controller
             'data' => $attendees,
         ]);
     }
+    public function countAttendeesByMonth()
+{
+    $currentMonth = now()->month;
+    $attendeesCount = [];
+
+    // Lặp qua 5 tháng gần nhất
+    for ($i = 0; $i < 5; $i++) {
+        $month = $currentMonth - $i;
+        $year = now()->year;
+
+        // Nếu tháng hiện tại là tháng 1, thì chuyển sang năm trước và tháng 12
+        if ($month <= 0) {
+            $month = 12 + $month;
+            $year--;
+        }
+
+        $monthLabel = 'Tháng ' . $month;
+        $attendeesCount[$monthLabel] = Attendee::whereMonth('created_at', $month)
+            ->whereYear('created_at', $year)
+            ->count();
+    }
+
+    // Sắp xếp mảng theo thứ tự tăng dần của tháng
+    ksort($attendeesCount);
+
+    return $attendeesCount;
+}
+
 }

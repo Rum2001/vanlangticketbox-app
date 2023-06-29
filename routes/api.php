@@ -81,6 +81,7 @@ Route::get('attendees/event/{eventName}', '\App\Http\Controllers\AttendeeControl
 Route::put('attendees/code/{verifyCode}', '\App\Http\Controllers\AttendeeController@updateStatusByVerifyCode');
 Route::get('/attendees/{id}', [\App\Http\Controllers\AttendeeController::class, 'show']);
 Route::get('/ticket', [\App\Http\Controllers\AttendeeController::class, 'searchAttendeeByEmail']);
+Route::get('/attendeescount', [\App\Http\Controllers\AttendeeController::class, 'countAttendeesByMonth']);
 // Router cho bảng location
 Route::get('/locations', [\App\Http\Controllers\Api\LocationController::class, 'index']);
 Route::post('/locations', [\App\Http\Controllers\Api\LocationController::class, 'store']);
